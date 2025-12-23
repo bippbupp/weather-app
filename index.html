@@ -20,6 +20,21 @@
 
             <div class="additional-cities" id="additionalCities"></div>
         </main>
+            <div class="add-city-section">
+                <h2>Добавить город</h2>
+                <div class="city-input-wrapper">
+                    <input 
+                        type="text" 
+                        id="cityInput" 
+                        placeholder="Введите название города"
+                        autocomplete="off"
+                    >
+                    <div class="suggestions" id="suggestions"></div>
+                    <span class="error-message" id="cityError"></span>
+                </div>
+                <button class="add-city-btn" id="addCityBtn">Добавить город</button>
+            </div>
+
     </div>
     <script src="script.js"></script>
 </body>
