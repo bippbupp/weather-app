@@ -53,3 +53,54 @@ async function fetchWeatherByCoords(lat, lon, days = 3) {
         throw error;
     }
 }
+
+function displayWeather(data, container, isPrimary = false) {
+    const location = data.location;
+    const current = data.current;
+    const forecast = data.forecast.forecastday;
+    
+    const locationName = isPrimary ? 'Текущее местоположение' : location.name;
+    
+    let forecastHTML = '';
+    forecast.forEach(day => {
+        const date = new Date(day.date);
+        const dayName = date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+        
+        forecastHTML += `
+            <div class="forecast-day">
+                <div class="day-name">${dayName}</div>
+                <img src="https:${day.day.condition.icon}" alt="${day.day.condition.text}">
+                <div class="temp">${Math.round(day.day.avgtemp_c)}°C</div>
+                <div class="condition">${day.day.condition.text}</div>
+            </div>
+        `;
+    });
+    
+    const weatherHTML = `
+        <div class="location">${locationName}</div>
+        <div class="current-weather">
+            <img src="https:${current.condition.icon}" alt="${current.condition.text}" class="weather-icon">
+            <div class="temp-large">${Math.round(current.temp_c)}°C</div>
+            <div class="condition-text">${current.condition.text}</div>
+        </div>
+        <div class="details">
+            <div class="detail-item">
+                <span class="detail-label">Влажность:</span>
+                <span class="detail-value">${current.humidity}%</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Ветер:</span>
+                <span class="detail-value">${current.wind_kph} км/ч</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Ощущается как:</span>
+                <span class="detail-value">${Math.round(current.feelslike_c)}°C</span>
+            </div>
+        </div>
+        <div class="forecast-container">
+            ${forecastHTML}
+        </div>
+    `;
+    
+    container.innerHTML = weatherHTML;
+}
