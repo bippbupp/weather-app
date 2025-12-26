@@ -104,3 +104,57 @@ function displayWeather(data, container, isPrimary = false) {
     
     container.innerHTML = weatherHTML;
 }
+
+function getUserLocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                resolve({
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude
+                });
+            },
+            error => {
+                reject(error);
+            }
+        );
+    });
+}
+
+async function loadPrimaryWeather() {
+    primaryWeatherCard.innerHTML = '<div class="loading">Загрузка...</div>';
+    
+    try {
+        const savedPrimary = localStorage.getItem('primaryLocation');
+        
+        if (savedPrimary) {
+            primaryLocation = JSON.parse(savedPrimary);
+            
+            if (primaryLocation.type === 'coords') {
+                const data = await fetchWeatherByCoords(primaryLocation.lat, primaryLocation.lon);
+                displayWeather(data, primaryWeatherCard, true);
+            } else {
+                const data = await fetchWeather(primaryLocation.city);
+                displayWeather(data, primaryWeatherCard, false);
+            }
+        } else {
+            try {
+                const coords = await getUserLocation();
+                primaryLocation = { type: 'coords', ...coords };
+                localStorage.setItem('primaryLocation', JSON.stringify(primaryLocation));
+                
+                const data = await fetchWeatherByCoords(coords.lat, coords.lon);
+                displayWeather(data, primaryWeatherCard, true);
+            } catch (geoError) {
+                cityModal.classList.add('show');
+            }
+        }
+    } catch (error) {
+        primaryWeatherCard.innerHTML = '<div class="error">Ошибка загрузки погоды</div>';
+    }
+}
