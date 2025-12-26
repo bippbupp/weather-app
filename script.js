@@ -297,3 +297,66 @@ async function refreshAllWeather() {
         refreshBtn.textContent = 'Обновить';
     }
 }
+
+modalSubmitBtn.addEventListener('click', async () => {
+    const cityName = modalCityInput.value.trim();
+    
+    const error = validateCity(cityName);
+    if (error) {
+        modalCityError.textContent = error;
+        return;
+    }
+    
+    modalSubmitBtn.disabled = true;
+    modalCityError.textContent = '';
+    primaryWeatherCard.innerHTML = '<div class="loading">Загрузка...</div>';
+    
+    try {
+        const data = await fetchWeather(cityName);
+        
+        primaryLocation = { type: 'city', city: cityName };
+        localStorage.setItem('primaryLocation', JSON.stringify(primaryLocation));
+        
+        displayWeather(data, primaryWeatherCard, false);
+        
+        cityModal.classList.remove('show');
+        modalCityInput.value = '';
+    } catch (error) {
+        modalCityError.textContent = 'Город не найден';
+        primaryWeatherCard.innerHTML = '';
+    } finally {
+        modalSubmitBtn.disabled = false;
+    }
+});
+
+cityInput.addEventListener('input', () => showSuggestions(cityInput, suggestions));
+modalCityInput.addEventListener('input', () => showSuggestions(modalCityInput, modalSuggestions));
+
+addCityBtn.addEventListener('click', () => {
+    const cityName = cityInput.value.trim();
+    addCity(cityName);
+});
+
+cityInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const cityName = cityInput.value.trim();
+        addCity(cityName);
+    }
+});
+
+modalCityInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        modalSubmitBtn.click();
+    }
+});
+
+refreshBtn.addEventListener('click', refreshAllWeather);
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.city-input-wrapper')) {
+        suggestions.classList.remove('show');
+    }
+    if (!e.target.closest('.modal-content')) {
+        modalSuggestions.classList.remove('show');
+    }
+});
