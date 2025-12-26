@@ -360,3 +360,38 @@ document.addEventListener('click', (e) => {
         modalSuggestions.classList.remove('show');
     }
 });
+
+function loadSavedCities() {
+    const saved = localStorage.getItem('savedCities');
+    if (saved) {
+        savedCities = JSON.parse(saved);
+        
+        savedCities.forEach(async cityName => {
+            const cityCard = document.createElement('div');
+            cityCard.className = 'weather-card';
+            cityCard.dataset.city = cityName;
+            cityCard.innerHTML = '<div class="loading">Загрузка...</div>';
+            additionalCities.appendChild(cityCard);
+            
+            try {
+                const data = await fetchWeather(cityName);
+                displayWeather(data, cityCard, false);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-city-btn';
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', () => removeCity(cityName, cityCard));
+                cityCard.appendChild(removeBtn);
+            } catch (error) {
+                cityCard.innerHTML = '<div class="error">Ошибка загрузки</div>';
+            }
+        });
+    }
+}
+
+async function init() {
+    await loadPrimaryWeather();
+    loadSavedCities();
+}
+
+document.addEventListener('DOMContentLoaded', init);
