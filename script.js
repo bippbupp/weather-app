@@ -209,3 +209,58 @@ function validateCity(city) {
     
     return null;
 }
+
+async function addCity(cityName) {
+    const error = validateCity(cityName);
+    if (error) {
+        cityError.textContent = error;
+        return;
+    }
+    
+    if (savedCities.includes(cityName)) {
+        cityError.textContent = 'Город уже добавлен';
+        return;
+    }
+    
+    if (savedCities.length >= 5) {
+        cityError.textContent = 'Максимум 5 городов';
+        return;
+    }
+    
+    try {
+        cityError.textContent = '';
+        
+        const cityCard = document.createElement('div');
+        cityCard.className = 'weather-card';
+        cityCard.dataset.city = cityName;
+        cityCard.innerHTML = '<div class="loading">Загрузка...</div>';
+        additionalCities.appendChild(cityCard);
+        
+        const data = await fetchWeather(cityName);
+        
+        displayWeather(data, cityCard, false);
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-city-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => removeCity(cityName, cityCard));
+        cityCard.appendChild(removeBtn);
+        
+        savedCities.push(cityName);
+        localStorage.setItem('savedCities', JSON.stringify(savedCities));
+        
+        cityInput.value = '';
+        suggestions.classList.remove('show');
+        
+    } catch (error) {
+        cityError.textContent = 'Город не найден';
+        const cityCard = additionalCities.querySelector(`[data-city="${cityName}"]`);
+        if (cityCard) cityCard.remove();
+    }
+}
+
+function removeCity(cityName, cardElement) {
+    cardElement.remove();
+    savedCities = savedCities.filter(city => city !== cityName);
+    localStorage.setItem('savedCities', JSON.stringify(savedCities));
+}
