@@ -1,5 +1,5 @@
-const API_KEY = '';
-const API_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const API_KEY = 'b3386fee8a214576b23213606252612';
+const API_BASE_URL = 'https://api.weatherapi.com/v1';
 
 const primaryWeatherCard = document.getElementById('primaryWeatherCard');
 const additionalCities = document.getElementById('additionalCities');
@@ -14,3 +14,6 @@ const modalCityInput = document.getElementById('modalCityInput');
 const modalSubmitBtn = document.getElementById('modalSubmitBtn');
 const modalSuggestions = document.getElementById('modalSuggestions');
 const modalCityError = document.getElementById('modalCityError');
+
+let savedCities = [];
+let primaryLocation = null;
