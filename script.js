@@ -17,3 +17,39 @@ const modalCityError = document.getElementById('modalCityError');
 
 let savedCities = [];
 let primaryLocation = null;
+
+async function fetchWeather(city, days = 3) {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/forecast.json?key=${API_KEY}&q=${city}&days=${days}&aqi=no`
+        );
+        
+        if (!response.ok) {
+            throw new Error('City not found');
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching weather:', error);
+        throw error;
+    }
+}
+
+async function fetchWeatherByCoords(lat, lon, days = 3) {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/forecast.json?key=${API_KEY}&q=${lat},${lon}&days=${days}&aqi=no`
+        );
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch weather');
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching weather:', error);
+        throw error;
+    }
+}
