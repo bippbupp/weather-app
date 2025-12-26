@@ -49,3 +49,59 @@ body {
 .refresh-btn:active {
     transform: translateY(0);
 }
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.weather-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.weather-card.primary {
+    min-height: 200px;
+}
+
+.weather-card .location {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.forecast-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.forecast-day {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.forecast-day .date {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.forecast-day .temp {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.forecast-day .description {
+    color: #666;
+    margin-top: 5px;
+    font-size: 0.9rem;
+}
