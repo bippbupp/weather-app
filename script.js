@@ -158,3 +158,54 @@ async function loadPrimaryWeather() {
         primaryWeatherCard.innerHTML = '<div class="error">Ошибка загрузки погоды</div>';
     }
 }
+
+const popularCities = [
+    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
+    'London', 'Paris', 'New York', 'Tokyo', 'Berlin',
+    'Madrid', 'Rome', 'Amsterdam', 'Barcelona', 'Dubai'
+];
+
+function showSuggestions(input, suggestionsContainer) {
+    const value = input.value.toLowerCase();
+    
+    if (value.length < 2) {
+        suggestionsContainer.classList.remove('show');
+        return;
+    }
+    
+    const filtered = popularCities.filter(city => 
+        city.toLowerCase().includes(value)
+    );
+    
+    if (filtered.length === 0) {
+        suggestionsContainer.classList.remove('show');
+        return;
+    }
+    
+    suggestionsContainer.innerHTML = filtered
+        .map(city => `<div class="suggestion-item">${city}</div>`)
+        .join('');
+    
+    suggestionsContainer.classList.add('show');
+    
+    suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+        item.addEventListener('click', () => {
+            input.value = item.textContent;
+            suggestionsContainer.classList.remove('show');
+        });
+    });
+}
+
+function validateCity(city) {
+    if (!city || city.trim().length < 2) {
+        return 'Введите название города';
+    }
+    
+    if (!/^[a-zA-Zа-яА-ЯёЁ\s-]+$/.test(city)) {
+        return 'Некорректное название города';
+    }
+    
+    return null;
+}
