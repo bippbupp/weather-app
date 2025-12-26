@@ -264,3 +264,36 @@ function removeCity(cityName, cardElement) {
     savedCities = savedCities.filter(city => city !== cityName);
     localStorage.setItem('savedCities', JSON.stringify(savedCities));
 }
+
+async function refreshAllWeather() {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Обновление...';
+    
+    try {
+        await loadPrimaryWeather();
+        
+        const cityCards = additionalCities.querySelectorAll('.weather-card');
+        for (const card of cityCards) {
+            const cityName = card.dataset.city;
+            if (cityName) {
+                card.innerHTML = '<div class="loading">Загрузка...</div>';
+                
+                try {
+                    const data = await fetchWeather(cityName);
+                    displayWeather(data, card, false);
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-city-btn';
+                    removeBtn.textContent = '×';
+                    removeBtn.addEventListener('click', () => removeCity(cityName, card));
+                    card.appendChild(removeBtn);
+                } catch (error) {
+                    card.innerHTML = '<div class="error">Ошибка загрузки</div>';
+                }
+            }
+        }
+    } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Обновить';
+    }
+}
