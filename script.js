@@ -17,56 +17,84 @@ const modalCityError = document.getElementById('modalCityError');
 
 let savedCities = [];
 let primaryLocation = null;
+let debounceTimer = null;
 
-async function fetchWeather(city, days = 3) {
-    try {
-        const response = await fetch(
-            `${API_BASE_URL}/forecast.json?key=${API_KEY}&q=${city}&days=${days}&aqi=no`
-        );
-        
-        if (!response.ok) {
-            throw new Error('City not found');
-        }
-        
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Error fetching weather:', error);
-        throw error;
+async function fetchWeather(city, days = 3, skipCache = false) {
+  try {
+    const cacheParam = skipCache ? `&_t=${Date.now()}` : '';
+    const response = await fetch(
+      `${API_BASE_URL}/forecast.json?key=${API_KEY}&q=${city}&days=${days}&aqi=no&lang=ru${cacheParam}`
+    );
+
+    if (!response.ok) {
+      throw new Error('City not found');
     }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching weather:', error);
+    throw error;
+  }
 }
 
-async function fetchWeatherByCoords(lat, lon, days = 3) {
-    try {
-        const response = await fetch(
-            `${API_BASE_URL}/forecast.json?key=${API_KEY}&q=${lat},${lon}&days=${days}&aqi=no`
-        );
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch weather');
-        }
-        
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Error fetching weather:', error);
-        throw error;
+async function fetchWeatherByCoords(lat, lon, days = 3, skipCache = false) {
+  try {
+    const cacheParam = skipCache ? `&_t=${Date.now()}` : '';
+    const response = await fetch(
+      `${API_BASE_URL}/forecast.json?key=${API_KEY}&q=${lat},${lon}&days=${days}&aqi=no&lang=ru${cacheParam}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch weather');
     }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching weather:', error);
+    throw error;
+  }
+}
+
+async function searchCities(query) {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/search.json?key=${API_KEY}&q=${query}&lang=ru`
+    );
+
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error searching cities:', error);
+    return [];
+  }
+}
+
+function debounce(func, delay) {
+  return function (...args) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => func.apply(this, args), delay);
+  };
 }
 
 function displayWeather(data, container, isPrimary = false) {
-    const location = data.location;
-    const current = data.current;
-    const forecast = data.forecast.forecastday;
-    
-    const locationName = isPrimary ? 'Текущее местоположение' : location.name;
-    
-    let forecastHTML = '';
-    forecast.forEach(day => {
-        const date = new Date(day.date);
-        const dayName = date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
-        
-        forecastHTML += `
+  const location = data.location;
+  const current = data.current;
+  const forecast = data.forecast.forecastday;
+
+  const locationName = isPrimary ? 'Текущее местоположение' : location.name;
+
+  let forecastHTML = '';
+  forecast.forEach(day => {
+    const date = new Date(day.date);
+    const dayName = date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    forecastHTML += `
             <div class="forecast-day">
                 <div class="day-name">${dayName}</div>
                 <img src="https:${day.day.condition.icon}" alt="${day.day.condition.text}">
@@ -74,9 +102,9 @@ function displayWeather(data, container, isPrimary = false) {
                 <div class="condition">${day.day.condition.text}</div>
             </div>
         `;
-    });
-    
-    const weatherHTML = `
+  });
+
+  const weatherHTML = `
         <div class="location">${locationName}</div>
         <div class="current-weather">
             <img src="https:${current.condition.icon}" alt="${current.condition.text}" class="weather-icon">
@@ -101,297 +129,303 @@ function displayWeather(data, container, isPrimary = false) {
             ${forecastHTML}
         </div>
     `;
-    
-    container.innerHTML = weatherHTML;
+
+  container.innerHTML = weatherHTML;
 }
 
 function getUserLocation() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
-            return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                resolve({
-                    lat: position.coords.latitude,
-                    lon: position.coords.longitude
-                });
-            },
-            error => {
-                reject(error);
-            }
-        );
-    });
-}
-
-async function loadPrimaryWeather() {
-    primaryWeatherCard.innerHTML = '<div class="loading">Загрузка...</div>';
-    
-    try {
-        const savedPrimary = localStorage.getItem('primaryLocation');
-        
-        if (savedPrimary) {
-            primaryLocation = JSON.parse(savedPrimary);
-            
-            if (primaryLocation.type === 'coords') {
-                const data = await fetchWeatherByCoords(primaryLocation.lat, primaryLocation.lon);
-                displayWeather(data, primaryWeatherCard, true);
-            } else {
-                const data = await fetchWeather(primaryLocation.city);
-                displayWeather(data, primaryWeatherCard, false);
-            }
-        } else {
-            try {
-                const coords = await getUserLocation();
-                primaryLocation = { type: 'coords', ...coords };
-                localStorage.setItem('primaryLocation', JSON.stringify(primaryLocation));
-                
-                const data = await fetchWeatherByCoords(coords.lat, coords.lon);
-                displayWeather(data, primaryWeatherCard, true);
-            } catch (geoError) {
-                cityModal.classList.add('show');
-            }
-        }
-    } catch (error) {
-        primaryWeatherCard.innerHTML = '<div class="error">Ошибка загрузки погоды</div>';
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation not supported'));
+      return;
     }
-}
 
-const popularCities = [
-    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
-    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
-    'London', 'Paris', 'New York', 'Tokyo', 'Berlin',
-    'Madrid', 'Rome', 'Amsterdam', 'Barcelona', 'Dubai'
-];
-
-function showSuggestions(input, suggestionsContainer) {
-    const value = input.value.toLowerCase();
-    
-    if (value.length < 2) {
-        suggestionsContainer.classList.remove('show');
-        return;
-    }
-    
-    const filtered = popularCities.filter(city => 
-        city.toLowerCase().includes(value)
-    );
-    
-    if (filtered.length === 0) {
-        suggestionsContainer.classList.remove('show');
-        return;
-    }
-    
-    suggestionsContainer.innerHTML = filtered
-        .map(city => `<div class="suggestion-item">${city}</div>`)
-        .join('');
-    
-    suggestionsContainer.classList.add('show');
-    
-    suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
-        item.addEventListener('click', () => {
-            input.value = item.textContent;
-            suggestionsContainer.classList.remove('show');
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        resolve({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
         });
-    });
+      },
+      error => {
+        reject(error);
+      }
+    );
+  });
 }
+
+async function loadPrimaryWeather(skipCache = false) {
+  primaryWeatherCard.innerHTML = '<div class="loading">Загрузка...</div>';
+
+  try {
+    const savedPrimary = localStorage.getItem('primaryLocation');
+
+    if (savedPrimary) {
+      primaryLocation = JSON.parse(savedPrimary);
+
+      if (primaryLocation.type === 'coords') {
+        const data = await fetchWeatherByCoords(primaryLocation.lat, primaryLocation.lon, 3, skipCache);
+        displayWeather(data, primaryWeatherCard, true);
+      } else {
+        const data = await fetchWeather(primaryLocation.city, 3, skipCache);
+        displayWeather(data, primaryWeatherCard, false);
+      }
+    } else {
+      try {
+        const coords = await getUserLocation();
+        primaryLocation = { type: 'coords', ...coords };
+        localStorage.setItem('primaryLocation', JSON.stringify(primaryLocation));
+
+        const data = await fetchWeatherByCoords(coords.lat, coords.lon, 3, skipCache);
+        displayWeather(data, primaryWeatherCard, true);
+      } catch (geoError) {
+        cityModal.classList.add('show');
+      }
+    }
+  } catch (error) {
+    primaryWeatherCard.innerHTML = '<div class="error">Ошибка загрузки погоды</div>';
+  }
+}
+
+async function showSuggestions(input, suggestionsContainer) {
+  const value = input.value.trim();
+
+  if (value.length < 2) {
+    suggestionsContainer.classList.remove('show');
+    return;
+  }
+
+  suggestionsContainer.innerHTML = '<div class="suggestions-loading">Поиск...</div>';
+  suggestionsContainer.classList.add('show');
+
+  const cities = await searchCities(value);
+
+  if (cities.length === 0) {
+    suggestionsContainer.innerHTML = '<div class="suggestions-loading">Ничего не найдено</div>';
+    return;
+  }
+
+  suggestionsContainer.innerHTML = cities
+    .map(city => {
+      const name = city.name;
+      const region = city.region ? `, ${city.region}` : '';
+      const country = city.country ? `, ${city.country}` : '';
+      return `<div class="suggestion-item" data-city="${name}">${name}${region}${country}</div>`;
+    })
+    .join('');
+
+  suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+    item.addEventListener('click', () => {
+      input.value = item.dataset.city;
+      suggestionsContainer.classList.remove('show');
+    });
+  });
+}
+
+const debouncedShowSuggestions = debounce(showSuggestions, 500);
 
 function validateCity(city) {
-    if (!city || city.trim().length < 2) {
-        return 'Введите название города';
-    }
-    
-    if (!/^[a-zA-Zа-яА-ЯёЁ\s-]+$/.test(city)) {
-        return 'Некорректное название города';
-    }
-    
-    return null;
+  if (!city || city.trim().length < 2) {
+    return 'Введите название города';
+  }
+
+  return null;
 }
 
 async function addCity(cityName) {
-    const error = validateCity(cityName);
-    if (error) {
-        cityError.textContent = error;
-        return;
-    }
-    
-    if (savedCities.includes(cityName)) {
-        cityError.textContent = 'Город уже добавлен';
-        return;
-    }
-    
-    if (savedCities.length >= 5) {
-        cityError.textContent = 'Максимум 5 городов';
-        return;
-    }
-    
-    try {
-        cityError.textContent = '';
-        
-        const cityCard = document.createElement('div');
-        cityCard.className = 'weather-card';
-        cityCard.dataset.city = cityName;
-        cityCard.innerHTML = '<div class="loading">Загрузка...</div>';
-        additionalCities.appendChild(cityCard);
-        
-        const data = await fetchWeather(cityName);
-        
-        displayWeather(data, cityCard, false);
-        
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-city-btn';
-        removeBtn.textContent = '×';
-        removeBtn.addEventListener('click', () => removeCity(cityName, cityCard));
-        cityCard.appendChild(removeBtn);
-        
-        savedCities.push(cityName);
-        localStorage.setItem('savedCities', JSON.stringify(savedCities));
-        
-        cityInput.value = '';
-        suggestions.classList.remove('show');
-        
-    } catch (error) {
-        cityError.textContent = 'Город не найден';
-        const cityCard = additionalCities.querySelector(`[data-city="${cityName}"]`);
-        if (cityCard) cityCard.remove();
-    }
+  const error = validateCity(cityName);
+  if (error) {
+    cityError.textContent = error;
+    return;
+  }
+
+  if (savedCities.includes(cityName)) {
+    cityError.textContent = 'Город уже добавлен';
+    return;
+  }
+
+  if (savedCities.length >= 5) {
+    cityError.textContent = 'Максимум 5 городов';
+    return;
+  }
+
+  try {
+    cityError.textContent = '';
+
+    const cityCard = document.createElement('div');
+    cityCard.className = 'weather-card';
+    cityCard.dataset.city = cityName;
+    cityCard.innerHTML = '<div class="loading">Загрузка...</div>';
+    additionalCities.appendChild(cityCard);
+
+    const data = await fetchWeather(cityName);
+
+    displayWeather(data, cityCard, false);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-city-btn';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => removeCity(cityName, cityCard));
+    cityCard.appendChild(removeBtn);
+
+    savedCities.push(cityName);
+    localStorage.setItem('savedCities', JSON.stringify(savedCities));
+
+    cityInput.value = '';
+    suggestions.classList.remove('show');
+
+  } catch (error) {
+    cityError.textContent = 'Город не найден';
+    const cityCard = additionalCities.querySelector(`[data-city="${cityName}"]`);
+    if (cityCard) cityCard.remove();
+  }
 }
 
 function removeCity(cityName, cardElement) {
-    cardElement.remove();
-    savedCities = savedCities.filter(city => city !== cityName);
-    localStorage.setItem('savedCities', JSON.stringify(savedCities));
+  cardElement.remove();
+  savedCities = savedCities.filter(city => city !== cityName);
+  localStorage.setItem('savedCities', JSON.stringify(savedCities));
 }
 
 async function refreshAllWeather() {
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = 'Обновление...';
-    
-    try {
-        await loadPrimaryWeather();
-        
-        const cityCards = additionalCities.querySelectorAll('.weather-card');
-        for (const card of cityCards) {
-            const cityName = card.dataset.city;
-            if (cityName) {
-                card.innerHTML = '<div class="loading">Загрузка...</div>';
-                
-                try {
-                    const data = await fetchWeather(cityName);
-                    displayWeather(data, card, false);
-                    
-                    const removeBtn = document.createElement('button');
-                    removeBtn.className = 'remove-city-btn';
-                    removeBtn.textContent = '×';
-                    removeBtn.addEventListener('click', () => removeCity(cityName, card));
-                    card.appendChild(removeBtn);
-                } catch (error) {
-                    card.innerHTML = '<div class="error">Ошибка загрузки</div>';
-                }
-            }
-        }
-    } finally {
-        refreshBtn.disabled = false;
-        refreshBtn.textContent = 'Обновить';
-    }
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = 'Обновление...';
+
+  try {
+    await loadPrimaryWeather(true);
+
+    const cityCards = additionalCities.querySelectorAll('.weather-card');
+
+    cityCards.forEach(card => {
+      card.innerHTML = '<div class="loading">Загрузка...</div>';
+    });
+
+    const fetchPromises = Array.from(cityCards).map(async (card) => {
+      const cityName = card.dataset.city;
+      if (!cityName) return;
+
+      try {
+        const data = await fetchWeather(cityName, 3, true);
+        displayWeather(data, card, false);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-city-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => removeCity(cityName, card));
+        card.appendChild(removeBtn);
+      } catch (error) {
+        card.innerHTML = '<div class="error">Ошибка загрузки</div>';
+      }
+    });
+
+    await Promise.all(fetchPromises);
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = 'Обновить';
+  }
 }
 
 modalSubmitBtn.addEventListener('click', async () => {
-    const cityName = modalCityInput.value.trim();
-    
-    const error = validateCity(cityName);
-    if (error) {
-        modalCityError.textContent = error;
-        return;
-    }
-    
-    modalSubmitBtn.disabled = true;
-    modalCityError.textContent = '';
-    primaryWeatherCard.innerHTML = '<div class="loading">Загрузка...</div>';
-    
-    try {
-        const data = await fetchWeather(cityName);
-        
-        primaryLocation = { type: 'city', city: cityName };
-        localStorage.setItem('primaryLocation', JSON.stringify(primaryLocation));
-        
-        displayWeather(data, primaryWeatherCard, false);
-        
-        cityModal.classList.remove('show');
-        modalCityInput.value = '';
-    } catch (error) {
-        modalCityError.textContent = 'Город не найден';
-        primaryWeatherCard.innerHTML = '';
-    } finally {
-        modalSubmitBtn.disabled = false;
-    }
+  const cityName = modalCityInput.value.trim();
+
+  const error = validateCity(cityName);
+  if (error) {
+    modalCityError.textContent = error;
+    return;
+  }
+
+  modalSubmitBtn.disabled = true;
+  modalCityError.textContent = '';
+  primaryWeatherCard.innerHTML = '<div class="loading">Загрузка...</div>';
+
+  try {
+    const data = await fetchWeather(cityName);
+
+    primaryLocation = { type: 'city', city: cityName };
+    localStorage.setItem('primaryLocation', JSON.stringify(primaryLocation));
+
+    displayWeather(data, primaryWeatherCard, false);
+
+    cityModal.classList.remove('show');
+    modalCityInput.value = '';
+  } catch (error) {
+    modalCityError.textContent = 'Город не найден';
+    primaryWeatherCard.innerHTML = '';
+  } finally {
+    modalSubmitBtn.disabled = false;
+  }
 });
 
-cityInput.addEventListener('input', () => showSuggestions(cityInput, suggestions));
-modalCityInput.addEventListener('input', () => showSuggestions(modalCityInput, modalSuggestions));
+cityInput.addEventListener('input', function () {
+  debouncedShowSuggestions(cityInput, suggestions);
+});
+
+modalCityInput.addEventListener('input', function () {
+  debouncedShowSuggestions(modalCityInput, modalSuggestions);
+});
 
 addCityBtn.addEventListener('click', () => {
-    const cityName = cityInput.value.trim();
-    addCity(cityName);
+  const cityName = cityInput.value.trim();
+  addCity(cityName);
 });
 
 cityInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const cityName = cityInput.value.trim();
-        addCity(cityName);
-    }
+  if (e.key === 'Enter') {
+    const cityName = cityInput.value.trim();
+    addCity(cityName);
+  }
 });
 
 modalCityInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        modalSubmitBtn.click();
-    }
+  if (e.key === 'Enter') {
+    modalSubmitBtn.click();
+  }
 });
 
 refreshBtn.addEventListener('click', refreshAllWeather);
 
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.city-input-wrapper')) {
-        suggestions.classList.remove('show');
-    }
-    if (!e.target.closest('.modal-content')) {
-        modalSuggestions.classList.remove('show');
-    }
+  if (!e.target.closest('.city-input-wrapper')) {
+    suggestions.classList.remove('show');
+  }
+  if (!e.target.closest('.modal-content')) {
+    modalSuggestions.classList.remove('show');
+  }
 });
 
 function loadSavedCities() {
-    const saved = localStorage.getItem('savedCities');
-    if (saved) {
-        savedCities = JSON.parse(saved);
-        
-        savedCities.forEach(async cityName => {
-            const cityCard = document.createElement('div');
-            cityCard.className = 'weather-card';
-            cityCard.dataset.city = cityName;
-            cityCard.innerHTML = '<div class="loading">Загрузка...</div>';
-            additionalCities.appendChild(cityCard);
-            
-            try {
-                const data = await fetchWeather(cityName);
-                displayWeather(data, cityCard, false);
-                
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-city-btn';
-                removeBtn.textContent = '×';
-                removeBtn.addEventListener('click', () => removeCity(cityName, cityCard));
-                cityCard.appendChild(removeBtn);
-            } catch (error) {
-                cityCard.innerHTML = '<div class="error">Ошибка загрузки</div>';
-            }
-        });
-    }
+  const saved = localStorage.getItem('savedCities');
+  if (saved) {
+    savedCities = JSON.parse(saved);
+
+    const fetchPromises = savedCities.map(async (cityName) => {
+      const cityCard = document.createElement('div');
+      cityCard.className = 'weather-card';
+      cityCard.dataset.city = cityName;
+      cityCard.innerHTML = '<div class="loading">Загрузка...</div>';
+      additionalCities.appendChild(cityCard);
+
+      try {
+        const data = await fetchWeather(cityName);
+        displayWeather(data, cityCard, false);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-city-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => removeCity(cityName, cityCard));
+        cityCard.appendChild(removeBtn);
+      } catch (error) {
+        cityCard.innerHTML = '<div class="error">Ошибка загрузки</div>';
+      }
+    });
+
+    Promise.all(fetchPromises);
+  }
 }
 
 async function init() {
-    await loadPrimaryWeather();
-    loadSavedCities();
+  await loadPrimaryWeather();
+  loadSavedCities();
 }
 
 document.addEventListener('DOMContentLoaded', init);
